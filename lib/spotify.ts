@@ -68,42 +68,61 @@ const basicAuthHeader = () => {
 export const refreshAccessToken = async (
   token: SpotifyToken
 ): Promise<SpotifyToken> => {
-  const params = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: token.refreshToken,
-  });
+  try {
+    const params = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: token.refreshToken,
+    });
 
-  const response = await fetch(`${SPOTIFY_ACCOUNTS_BASE}/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${basicAuthHeader()}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params,
-    cache: "no-store",
-  });
+    const response = await fetch(`${SPOTIFY_ACCOUNTS_BASE}/api/token`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basicAuthHeader()}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params,
+      cache: "no-store",
+    });
 
-  const data = (await response.json()) as Record<string, unknown>;
+    const text = await response.text();
+    let data: Record<string, unknown> = {};
 
-  if (!response.ok) {
-    const message = (data.error_description as string) ?? "Failed to refresh token";
-    console.error("Spotify token refresh failed", message);
+    try {
+      data = JSON.parse(text);
+    } catch (parseError) {
+      console.error("Failed to parse Spotify token response", text.substring(0, 200));
+      return {
+        ...token,
+        error: "RefreshAccessTokenError",
+      };
+    }
+
+    if (!response.ok) {
+      const message = (data.error_description as string) ?? "Failed to refresh token";
+      console.error("Spotify token refresh failed", message);
+      return {
+        ...token,
+        error: "RefreshAccessTokenError",
+      };
+    }
+
+    const expiresIn = Number(data.expires_in ?? 3600) * 1000;
+
+    return {
+      ...token,
+      accessToken: String(data.access_token ?? token.accessToken),
+      accessTokenExpires: Date.now() + expiresIn,
+      refreshToken: String(data.refresh_token ?? token.refreshToken),
+      tokenType: String(data.token_type ?? token.tokenType ?? "Bearer"),
+      scope: String(data.scope ?? token.scope ?? ""),
+    };
+  } catch (error) {
+    console.error("Error refreshing access token", error);
     return {
       ...token,
       error: "RefreshAccessTokenError",
     };
   }
-
-  const expiresIn = Number(data.expires_in ?? 3600) * 1000;
-
-  return {
-    ...token,
-    accessToken: String(data.access_token ?? token.accessToken),
-    accessTokenExpires: Date.now() + expiresIn,
-    refreshToken: String(data.refresh_token ?? token.refreshToken),
-    tokenType: String(data.token_type ?? token.tokenType ?? "Bearer"),
-    scope: String(data.scope ?? token.scope ?? ""),
-  };
 };
 
 const fetchSpotify = async <T>(

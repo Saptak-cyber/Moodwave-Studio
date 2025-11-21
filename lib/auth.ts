@@ -20,6 +20,7 @@ const authorizationUrl = `${"https://accounts.spotify.com/authorize"}?${new URLS
 ).toString()}`;
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     SpotifyProvider({
       clientId: process.env.SPOTIFY_CLIENT_ID ?? "",
@@ -49,6 +50,12 @@ export const authOptions: NextAuthOptions = {
 
       // Refresh token
       const updatedToken = await refreshAccessToken(token as SpotifyToken);
+      
+      // If refresh failed, mark the token as expired so user needs to re-login
+      if (updatedToken.error) {
+        return { ...token, error: "RefreshAccessTokenError" };
+      }
+      
       return {
         ...token,
         ...updatedToken,
