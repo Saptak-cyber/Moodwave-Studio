@@ -216,8 +216,8 @@ const ensureSeeds = (
   const moodPreset = MOOD_PRESETS[mood];
   const genres = moodPreset.seedGenres.slice(0, 5);
   const seedGenres = genres.length ? genres.join(",") : undefined;
-  const seedArtists = personalSeeds.artistSeeds.slice(0, 2).join(",");
-  const seedTracks = personalSeeds.trackSeeds.slice(0, 2).join(",");
+  const seedArtists = personalSeeds.artistSeeds.slice(0, 2).join(",") || undefined;
+  const seedTracks = personalSeeds.trackSeeds.slice(0, 2).join(",") || undefined;
 
   if (seedGenres || seedArtists || seedTracks) {
     return { seedGenres, seedArtists, seedTracks };
@@ -232,7 +232,8 @@ const ensureSeeds = (
 
 export const getRecommendationsForMood = async (
   accessToken: string,
-  moodParam?: string | null
+  moodParam?: string | null,
+  customGenres?: string[]
 ) => {
   const mood = resolveMoodKey(moodParam);
   const preset = MOOD_PRESETS[mood];
@@ -243,9 +244,20 @@ export const getRecommendationsForMood = async (
     limit: "12",
   });
 
-  if (seeds.seedGenres) params.set("seed_genres", seeds.seedGenres);
-  if (seeds.seedArtists) params.set("seed_artists", seeds.seedArtists);
-  if (seeds.seedTracks) params.set("seed_tracks", seeds.seedTracks);
+  // Use custom genres if provided, otherwise use mood preset genres
+  const genresToUse = customGenres && customGenres.length > 0
+    ? customGenres.slice(0, 5).join(",")
+    : seeds.seedGenres;
+
+  if (genresToUse && genresToUse.length > 0) {
+    params.set("seed_genres", genresToUse);
+  }
+  if (seeds.seedArtists && seeds.seedArtists.length > 0) {
+    params.set("seed_artists", seeds.seedArtists);
+  }
+  if (seeds.seedTracks && seeds.seedTracks.length > 0) {
+    params.set("seed_tracks", seeds.seedTracks);
+  }
 
   Object.entries(preset.ranges).forEach(([key, value]) => {
     if (value !== undefined) {
@@ -266,6 +278,14 @@ export const getRecommendationsForMood = async (
 
 export const getCurrentUserProfile = (accessToken: string) =>
   fetchSpotify<UserProfile>(`${SPOTIFY_API_BASE}/me`, accessToken);
+
+export const getAvailableGenreSeeds = async (accessToken: string): Promise<string[]> => {
+  const data = await fetchSpotify<{ genres: string[] }>(
+    `${SPOTIFY_API_BASE}/recommendations/available-genre-seeds`,
+    accessToken
+  );
+  return data.genres;
+};
 
 export const createPlaylistWithTracks = async (
   accessToken: string,

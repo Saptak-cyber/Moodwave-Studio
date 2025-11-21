@@ -34,13 +34,16 @@ export const MoodPlaylistClient = () => {
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [availableGenres, setAvailableGenres] = useState<string[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [showGenrePicker, setShowGenrePicker] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const bootstrappedRef = useRef(false);
 
   const authenticated = status === "authenticated" && !!session?.accessToken;
 
   const loadPlaylist = useCallback(
-    async (mood: MoodKey, showLoading = true) => {
+    async (mood: MoodKey, showLoading = true, genres?: string[]) => {
       if (!authenticated) return;
 
       if (showLoading) {
@@ -49,7 +52,8 @@ export const MoodPlaylistClient = () => {
       setError(null);
 
       try {
-        const response = await fetch(`/api/mood-playlist?mood=${mood}`, {
+        const genresQuery = genres && genres.length > 0 ? `&genres=${genres.join(",")}` : "";
+        const response = await fetch(`/api/mood-playlist?mood=${mood}${genresQuery}`, {
           method: "GET",
           cache: "no-store",
         });
@@ -78,13 +82,24 @@ export const MoodPlaylistClient = () => {
     if (!authenticated) {
       bootstrappedRef.current = false;
       setTracks([]);
+      setAvailableGenres([]);
       return;
     }
 
+    // Fetch available genres
+    fetch("/api/genres", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.genres) setAvailableGenres(data.genres);
+      })
+      .catch(() => {
+        console.warn("Could not load genre seeds");
+      });
+
     const showSpinner = bootstrappedRef.current;
     bootstrappedRef.current = true;
-    void loadPlaylist(selectedMood, showSpinner);
-  }, [authenticated, loadPlaylist, selectedMood]);
+    void loadPlaylist(selectedMood, showSpinner, selectedGenres.length > 0 ? selectedGenres : undefined);
+  }, [authenticated, loadPlaylist, selectedMood, selectedGenres]);
 
   useEffect(() => {
     const audioEl = audioRef.current;
@@ -132,6 +147,14 @@ export const MoodPlaylistClient = () => {
 
   const handleMoodSelect = (mood: MoodKey) => {
     setSelectedMood(mood);
+  };
+
+  const handleGenreToggle = (genre: string) => {
+    setSelectedGenres((prev) =>
+      prev.includes(genre)
+        ? prev.filter((g) => g !== genre)
+        : [...prev, genre].slice(0, 5) // Max 5 genres
+    );
   };
 
   const handleSavePlaylist = async () => {
@@ -222,7 +245,14 @@ export const MoodPlaylistClient = () => {
           </div>
           <div className="flex flex-wrap gap-3">
             <button
-              onClick={() => loadPlaylist(selectedMood)}
+              onClick={() => setShowGenrePicker(!showGenrePicker)}
+              disabled={!authenticated}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {selectedGenres.length > 0 ? `${selectedGenres.length} Genres` : "Pick Genres"}
+            </button>
+            <button
+              onClick={() => loadPlaylist(selectedMood, true, selectedGenres.length > 0 ? selectedGenres : undefined)}
               disabled={!authenticated || isLoading}
               className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -260,6 +290,50 @@ export const MoodPlaylistClient = () => {
             );
           })}
         </div>
+
+        {showGenrePicker && authenticated && availableGenres.length > 0 && (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  Pick Custom Genres (Max 5)
+                </h3>
+                <p className="text-sm text-white/60">
+                  {selectedGenres.length > 0
+                    ? `Selected: ${selectedGenres.join(", ")}`
+                    : "Choose from Spotify's genre seeds"}
+                </p>
+              </div>
+              {selectedGenres.length > 0 && (
+                <button
+                  onClick={() => setSelectedGenres([])}
+                  className="text-sm text-white/60 underline hover:text-white"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+            <div className="grid max-h-96 gap-2 overflow-y-auto md:grid-cols-4 lg:grid-cols-6">
+              {availableGenres.map((genre) => {
+                const isSelected = selectedGenres.includes(genre);
+                return (
+                  <button
+                    key={genre}
+                    onClick={() => handleGenreToggle(genre)}
+                    disabled={!isSelected && selectedGenres.length >= 5}
+                    className={`rounded-lg border px-3 py-2 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                      isSelected
+                        ? "border-[#1ed760] bg-[#1ed760]/20 text-[#1ed760]"
+                        : "border-white/10 text-white/80 hover:border-white/40"
+                    }`}
+                  >
+                    {genre}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {!authenticated ? (
           <div className="mt-10 rounded-2xl border border-dashed border-white/20 bg-black/30 p-6 text-center text-white/70">
