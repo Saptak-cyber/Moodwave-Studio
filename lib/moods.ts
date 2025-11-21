@@ -92,7 +92,7 @@ export const MOOD_PRESETS: Record<MoodKey, MoodPreset> = {
     description: "Lo-fi beats and late-night textures.",
     accent: "#70a1ff",
     background: "from-[#70a1ff1a] to-transparent",
-    seedGenres: ["lo-fi", "ambient", "chill"],
+    seedGenres: ["chill", "ambient", "electronic"],
     ranges: {
       max_energy: 0.55,
       max_danceability: 0.65,
@@ -105,7 +105,7 @@ export const MOOD_PRESETS: Record<MoodKey, MoodPreset> = {
     description: "Deep work with minimal distractions.",
     accent: "#ffd166",
     background: "from-[#ffd1661a] to-transparent",
-    seedGenres: ["classical", "piano", "focus"],
+    seedGenres: ["classical", "piano", "ambient"],
     ranges: {
       max_energy: 0.55,
       min_danceability: 0.3,
@@ -119,7 +119,7 @@ export const MOOD_PRESETS: Record<MoodKey, MoodPreset> = {
     description: "Smooth R&B and candlelight pop.",
     accent: "#ff7eb3",
     background: "from-[#ff7eb31a] to-transparent",
-    seedGenres: ["rnb", "soul", "romance"],
+    seedGenres: ["r-n-b", "soul", "pop"],
     ranges: {
       min_valence: 0.5,
       max_valence: 0.85,

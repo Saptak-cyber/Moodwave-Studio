@@ -1,7 +1,7 @@
 import { DEFAULT_MOOD, MOOD_PRESETS, MoodKey, resolveMoodKey } from "@/lib/moods";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
-const SPOTIFY_ACCOUNTS_BASE = "https://accounts.spotify.com/api";
+const SPOTIFY_ACCOUNTS_BASE = "https://accounts.spotify.com";
 
 const requiredEnv = (key: string) => {
   const value = process.env[key];
