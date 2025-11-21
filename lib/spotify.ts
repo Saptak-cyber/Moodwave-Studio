@@ -117,7 +117,16 @@ const fetchSpotify = async <T>(
     cache: "no-store",
   });
 
-  const payload = await response.json();
+  const raw = await response.text();
+  let payload: unknown = undefined;
+
+  if (raw) {
+    try {
+      payload = JSON.parse(raw);
+    } catch (error) {
+      console.warn("Unable to parse Spotify response as JSON", error);
+    }
+  }
 
   if (!response.ok) {
     if (isSpotifyError(payload)) {
@@ -125,10 +134,12 @@ const fetchSpotify = async <T>(
         `Spotify API error ${payload.error.status}: ${payload.error.message}`
       );
     }
-    throw new Error("Unexpected Spotify API response");
+    throw new Error(
+      `Unexpected Spotify API response (${response.status} ${response.statusText})`
+    );
   }
 
-  return payload as T;
+  return (payload ?? ({} as T)) as T;
 };
 
 type TopItemsResponse<T> = {
