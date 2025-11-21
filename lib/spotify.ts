@@ -242,7 +242,7 @@ export const getRecommendationsForMood = async (
   accessToken: string,
   moodParam?: string | null,
   customGenres?: string[]
-) => {
+): Promise<{ mood: MoodKey; tracks: SimplifiedTrack[] }> => {
   const mood = resolveMoodKey(moodParam);
   const preset = MOOD_PRESETS[mood];
   const personalSeeds = await getPersonalSeeds(accessToken);
