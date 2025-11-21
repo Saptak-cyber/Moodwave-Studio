@@ -20,18 +20,18 @@ export default async function Home() {
               </p>
               <h1 className="text-2xl font-semibold md:text-3xl">
                 Moodwave Studio
-              </h1>
+          </h1>
             </div>
           </div>
           <div className="text-sm text-white/60">
             {session?.user?.name
               ? `Signed in as ${session.user.name}`
               : "Previewing as guest"}
-          </div>
+        </div>
         </header>
 
         <MoodPlaylistClient />
-      </div>
-    </main>
+        </div>
+      </main>
   );
 }

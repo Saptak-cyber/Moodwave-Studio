@@ -46,6 +46,10 @@ type SpotifyApiError = {
   };
 };
 
+type SpotifyFetchError = Error & {
+  status?: number;
+};
+
 const isSpotifyError = (payload: unknown): payload is SpotifyApiError => {
   return (
     typeof payload === "object" &&
@@ -130,13 +134,17 @@ const fetchSpotify = async <T>(
 
   if (!response.ok) {
     if (isSpotifyError(payload)) {
-      throw new Error(
+      const err = new Error(
         `Spotify API error ${payload.error.status}: ${payload.error.message}`
-      );
+      ) as SpotifyFetchError;
+      err.status = response.status;
+      throw err;
     }
-    throw new Error(
+    const err = new Error(
       `Unexpected Spotify API response (${response.status} ${response.statusText})`
-    );
+    ) as SpotifyFetchError;
+    err.status = response.status;
+    throw err;
   }
 
   return (payload ?? ({} as T)) as T;
@@ -265,15 +273,27 @@ export const getRecommendationsForMood = async (
     }
   });
 
-  const data = await fetchSpotify<RecommendationsResponse>(
-    `${SPOTIFY_API_BASE}/recommendations?${params.toString()}`,
-    accessToken
-  );
+  try {
+    const data = await fetchSpotify<RecommendationsResponse>(
+      `${SPOTIFY_API_BASE}/recommendations?${params.toString()}`,
+      accessToken
+    );
 
-  return {
-    mood,
-    tracks: data.tracks.map(formatTrack),
-  };
+    return {
+      mood,
+      tracks: data.tracks.map(formatTrack),
+    };
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    if (status === 404 && customGenres && customGenres.length > 0) {
+      console.warn(
+        "Custom genres produced no results. Falling back to mood preset.",
+        customGenres
+      );
+      return getRecommendationsForMood(accessToken, moodParam, undefined);
+    }
+    throw error;
+  }
 };
 
 export const getCurrentUserProfile = (accessToken: string) =>
